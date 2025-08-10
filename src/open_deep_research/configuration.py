@@ -35,6 +35,18 @@ class MCPConfig(BaseModel):
     )
     """Whether the MCP server requires authentication"""
 
+class ModelConfig(BaseModel):
+    """Configuration for a specific model including custom OpenAI compatible endpoints."""
+    
+    provider: str = Field(default="openai")
+    model: str = Field(default="gpt-4.1-mini")
+    base_url: Optional[str] = Field(default=None)
+    api_key: Optional[str] = Field(default=None)
+    
+    def __str__(self) -> str:
+        """Return string representation for backward compatibility."""
+        return f"{self.provider}:{self.model}"
+
 class Configuration(BaseModel):
     """Main configuration class for the Deep Research agent."""
     
@@ -124,7 +136,16 @@ class Configuration(BaseModel):
             "x_oap_ui_config": {
                 "type": "text",
                 "default": "openai:gpt-4.1-mini",
-                "description": "Model for summarizing research results from Tavily search results"
+                "description": "Model for summarizing research results from Tavily search results (format: provider:model or full ModelConfig JSON)"
+            }
+        }
+    )
+    summarization_model_config: Optional[ModelConfig] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "object",
+                "description": "Detailed configuration for summarization model including custom base_url"
             }
         }
     )
@@ -156,7 +177,16 @@ class Configuration(BaseModel):
             "x_oap_ui_config": {
                 "type": "text",
                 "default": "openai:gpt-4.1",
-                "description": "Model for conducting research. NOTE: Make sure your Researcher Model supports the selected search API."
+                "description": "Model for conducting research. NOTE: Make sure your Researcher Model supports the selected search API. (format: provider:model or full ModelConfig JSON)"
+            }
+        }
+    )
+    research_model_config: Optional[ModelConfig] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "object",
+                "description": "Detailed configuration for research model including custom base_url"
             }
         }
     )
@@ -176,7 +206,16 @@ class Configuration(BaseModel):
             "x_oap_ui_config": {
                 "type": "text",
                 "default": "openai:gpt-4.1",
-                "description": "Model for compressing research findings from sub-agents. NOTE: Make sure your Compression Model supports the selected search API."
+                "description": "Model for compressing research findings from sub-agents. NOTE: Make sure your Compression Model supports the selected search API. (format: provider:model or full ModelConfig JSON)"
+            }
+        }
+    )
+    compression_model_config: Optional[ModelConfig] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "object",
+                "description": "Detailed configuration for compression model including custom base_url"
             }
         }
     )
@@ -196,7 +235,16 @@ class Configuration(BaseModel):
             "x_oap_ui_config": {
                 "type": "text",
                 "default": "openai:gpt-4.1",
-                "description": "Model for writing the final report from all research findings"
+                "description": "Model for writing the final report from all research findings (format: provider:model or full ModelConfig JSON)"
+            }
+        }
+    )
+    final_report_model_config: Optional[ModelConfig] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "object",
+                "description": "Detailed configuration for final report model including custom base_url"
             }
         }
     )
@@ -238,12 +286,28 @@ class Configuration(BaseModel):
         cls, config: Optional[RunnableConfig] = None
     ) -> "Configuration":
         """Create a Configuration instance from a RunnableConfig."""
+        import json
+        
         configurable = config.get("configurable", {}) if config else {}
         field_names = list(cls.model_fields.keys())
-        values: dict[str, Any] = {
-            field_name: os.environ.get(field_name.upper(), configurable.get(field_name))
-            for field_name in field_names
-        }
+        values: dict[str, Any] = {}
+        
+        for field_name in field_names:
+            value = os.environ.get(field_name.upper(), configurable.get(field_name))
+            
+            # Handle JSON string parsing for ModelConfig fields
+            if field_name.endswith('_config') and isinstance(value, str):
+                try:
+                    # Try to parse JSON string into ModelConfig
+                    parsed = json.loads(value)
+                    if isinstance(parsed, dict):
+                        value = ModelConfig(**parsed)
+                except (json.JSONDecodeError, ValueError):
+                    # If JSON parsing fails, keep original string
+                    pass
+            
+            values[field_name] = value
+        
         return cls(**{k: v for k, v in values.items() if v is not None})
 
     class Config:

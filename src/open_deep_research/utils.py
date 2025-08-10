@@ -83,8 +83,9 @@ async def tavily_search(
     
     # Initialize summarization model with retry logic
     model_api_key = get_api_key_for_model(configurable.summarization_model, config)
-    summarization_model = init_chat_model(
-        model=configurable.summarization_model,
+    summarization_model = create_model_with_config(
+        model_str_or_config=configurable.summarization_model,
+        model_config=configurable.summarization_model_config,
         max_tokens=configurable.summarization_model_max_tokens,
         api_key=model_api_key,
         tags=["langsmith:nostream"]
@@ -879,6 +880,51 @@ def get_config_value(value):
         return value
     else:
         return value.value
+
+def create_model_with_config(model_str_or_config: str, model_config: Any, max_tokens: int, api_key: str, tags: list = None) -> Any:
+    """Create a chat model instance from string or ModelConfig.
+    
+    Args:
+        model_str_or_config: Model string (format: provider:model) or ModelConfig instance
+        model_config: ModelConfig instance from configuration
+        max_tokens: Maximum tokens for the model
+        api_key: API key for the model
+        tags: Optional tags for the model
+    
+    Returns:
+        Configured chat model instance
+    """
+    from open_deep_research.configuration import ModelConfig
+    
+    tags = tags or []
+    
+    # Handle ModelConfig instance
+    if model_config and hasattr(model_config, 'provider') and hasattr(model_config, 'model'):
+        config_dict = {
+            "model": f"{model_config.provider}:{model_config.model}",
+            "max_tokens": max_tokens,
+            "tags": tags
+        }
+        
+        # Add base_url if provided
+        if model_config.base_url:
+            config_dict["base_url"] = model_config.base_url
+            
+        # Add api_key if provided in config, otherwise use the passed api_key
+        if model_config.api_key:
+            config_dict["api_key"] = model_config.api_key
+        else:
+            config_dict["api_key"] = api_key
+            
+        return init_chat_model(**config_dict)
+    
+    # Fall back to string-based configuration
+    return init_chat_model(
+        model=model_str_or_config,
+        max_tokens=max_tokens,
+        api_key=api_key,
+        tags=tags
+    )
 
 def get_api_key_for_model(model_name: str, config: RunnableConfig):
     """Get API key for a specific model from environment or config."""

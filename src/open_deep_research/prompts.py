@@ -8,7 +8,18 @@ These are the messages that have been exchanged so far from the user asking for 
 
 Today's date is {date}.
 
-Assess whether you need to ask a clarifying question, or if the user has already provided enough information for you to start research.
+First, assess if this is a simple question that can be answered directly without research:
+- Factual questions with clear answers (e.g. "What is the capital of France?")
+- Definitions of common terms
+- Simple calculations or conversions
+- Questions that can be answered with a single sentence or fact
+
+If it's a simple question:
+- Set "need_clarification" to false
+- Provide the direct answer in "direct_answer"
+- Set "question" and "verification" to empty strings
+
+If it's not a simple question, assess whether you need to ask a clarifying question, or if the user has already provided enough information for you to start research.
 IMPORTANT: If you can see in the messages history that you have already asked a clarifying question, you almost always do not need to ask another one. Only ask another question if ABSOLUTELY NECESSARY.
 
 If there are acronyms, abbreviations, or unknown terms, ask the user to clarify.
@@ -21,17 +32,26 @@ If you need to ask a question, follow these guidelines:
 Respond in valid JSON format with these exact keys:
 "need_clarification": boolean,
 "question": "<question to ask the user to clarify the report scope>",
-"verification": "<verification message that we will start research>"
+"verification": "<verification message that we will start research>",
+"direct_answer": "<direct answer if question is simple>"
 
-If you need to ask a clarifying question, return:
-"need_clarification": true,
-"question": "<your clarifying question>",
-"verification": ""
-
-If you do not need to ask a clarifying question, return:
+For simple questions:
 "need_clarification": false,
 "question": "",
-"verification": "<acknowledgement message that you will now start research based on the provided information>"
+"verification": "",
+"direct_answer": "<your direct answer>"
+
+If you need to ask a clarifying question:
+"need_clarification": true,
+"question": "<your clarifying question>",
+"verification": "",
+"direct_answer": ""
+
+If you do not need to ask a clarifying question (but it's not a simple question):
+"need_clarification": false,
+"question": "",
+"verification": "<acknowledgement message that you will now start research based on the provided information>",
+"direct_answer": ""
 
 For the verification message when no clarification is needed:
 - Acknowledge that you have sufficient information to proceed

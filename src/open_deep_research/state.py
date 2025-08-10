@@ -39,6 +39,10 @@ class ClarifyWithUser(BaseModel):
     verification: str = Field(
         description="Verify message that we will start research after the user has provided the necessary information.",
     )
+    direct_answer: str = Field(
+        default="",
+        description="Direct answer if the question is simple and doesn't need research",
+    )
 
 class ResearchQuestion(BaseModel):
     """Research question and brief for guiding research."""
